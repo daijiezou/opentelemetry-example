@@ -1,0 +1,185 @@
+syntax = "proto3"; // 版本声明，使用Protocol Buffers v3版本
+
+package geminiuserauth; // 包名
+option go_package = "gitlab.virtaitech.com/gemini-platform/public-grpc/proto/geminiuserauth";
+
+service GeminiAuth {
+  rpc GeminiAuth(GeminiAuthRequest) returns (GeminiAuthReply) {}
+  //  rpc GeminiTokenAuth (GeminiTokenAuthRequest) returns
+  //  (GeminiTokenAuthReply) {}
+  rpc GeminiLoginAuth(GeminiLoginAuthRequest) returns (GeminiLoginAuthReplay) {}
+  rpc PullImageAuth(PullImageAuthRequest) returns (PullImageAuthReplay) {}
+  rpc PushImageAuth(PushImageAuthRequest) returns (PushImageAuthReplay) {}
+  rpc RefreshLicense(RefreshLicenseRequest) returns (RefreshLicenseReplay) {}
+  rpc GetUserInfoById(GetUserInfoByIdRequest) returns (GetUserInfoByIdReply) {}
+  rpc GetUsersByRoleId (GetUsersByRoleIdRequest) returns (GetUsersByRoleIdReply) {}
+  rpc GetRolesInfoById(GetRolesInfoByIdRequest) returns (GetRolesInfoByIdReply) {}
+  rpc CheckKey (CheckKeyRequest) returns (CheckKeyReply) {}
+  rpc GetKey (GetKeyRequest) returns (GetKeyReply) {}
+  // 获取用户侧user信息
+  rpc UserInfoList(UserInfoListReq) returns(UserInfoListReply);
+
+  rpc UserLogin(UserLoginReq) returns(UserLoginReply){}
+  rpc ReFreshToken (ReFreshTokenReq) returns(ReFreshTokenReply){}
+}
+
+message ReFreshTokenReq {
+  string access_token = 1;
+  string refresh_token = 2;
+
+}
+
+message ReFreshTokenReply {
+  int32 code = 1;
+  string msg = 2;
+  ReFreshTokenReplyData data = 3;
+}
+
+message ReFreshTokenReplyData {
+  string new_access_token = 1;
+  string token_expire_time = 2;
+}
+
+
+message UserLoginReq {
+  string username = 1;
+  string password = 2;
+}
+
+message UserLoginReply{
+  int32 code = 1;
+  string msg = 2;
+  UserLoginReplyData data = 3;
+}
+message UserLoginReplyData {
+  string token = 1;
+  string refresh_token = 2;
+  int32 user_id = 3 ;
+  string username = 4;
+  string display_name = 5;
+  string phone_num = 6;
+  string email = 7;
+}
+
+
+message GeminiAuthRequest {
+  string token = 1;
+  string client_name = 2;
+  string url = 3;
+}
+
+message GeminiAuthReply {
+  bool is_login_success = 1;
+  bool is_auth_success = 2;
+  bool is_check_license_success = 3;
+  string msg = 4;
+  int32 user_id = 5;
+  string user_name = 6;
+}
+
+message GeminiLoginAuthRequest {
+  string client_name = 1;
+  string user_name = 2;
+  string password = 3;
+}
+
+message GeminiLoginAuthReplay {
+  bool is_success = 1;
+  string msg = 2;
+  int64 user_id = 3;
+}
+
+message PullImageAuthRequest {string user_name = 1;}
+
+message PullImageAuthReplay {bool pull_image_auth = 1;}
+
+message PushImageAuthRequest {string user_name = 1;}
+
+message PushImageAuthReplay {
+  bool push_image_auth = 1;
+  string msg = 2;
+}
+
+message RefreshLicenseRequest {}
+
+message RefreshLicenseReplay {bool is_success = 1;}
+
+message GetUserInfoByIdRequest{
+  int64 user_id = 1 ;
+}
+
+message UserInfo {
+  int64 user_id = 1;
+  string user_name = 2;
+  string display_name = 3;
+  string email = 4;
+  string phone = 5;
+  int32 status = 6;
+  string source = 7;
+  string create_time = 8;
+  string update_time = 9;
+  string last_login_time = 10;
+  string status_name = 11;
+}
+message GetUserInfoByIdReply{
+  UserInfo user_info = 1;
+  bool      is_success = 2;
+  string    err = 3;
+}
+
+message CheckKeyRequest {
+  int64 key_id = 1;
+  int64 user_id = 2;
+}
+
+message CheckKeyReply {
+  bool allow = 1;
+}
+
+message GetKeyRequest {
+  int64 key_id = 1;
+}
+
+message GetKeyReply {
+  string pub_key = 1;
+}
+
+message GetUsersByRoleIdRequest {int64 role_id = 1;}
+
+message GetUsersByRoleIdReply {
+  repeated UserInfo user_info = 1;
+  bool is_success = 2;
+  string err = 3;
+}
+
+message GetRolesInfoByIdRequest {repeated int32 role_id = 1;}
+
+message RoleInfo {
+  int32 role_id = 1;
+  string role_name = 2;
+  string description = 3;
+  string create_time = 4;
+  string update_time = 5;
+  int64 create_id = 6;
+  int64 update_id = 7;
+}
+
+message GetRolesInfoByIdReply {
+  repeated RoleInfo role_info = 1;
+  bool is_success = 2;
+  string err = 3;
+}
+
+message UserInfoListReq {
+  repeated int64 uid_list = 1;
+  string search = 2;
+  string display_name = 3;
+}
+message UserInfoListReply{
+  string msg = 1;
+  int64  code = 2;
+  Data data = 3;
+  message Data {
+    repeated UserInfo user_info_list = 1;
+  }
+}
