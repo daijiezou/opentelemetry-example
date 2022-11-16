@@ -33,7 +33,7 @@ func main() {
 	tp, err := provider.StdOutTracer()
 	if err != nil {
 		log.Fatal(err)
-		history1
+		history2
 	}
 
 	defer func() {
