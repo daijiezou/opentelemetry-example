@@ -32,8 +32,8 @@ func main() {
 	//tp, err := JaegerProvider("http://127.0.0.1:14268/api/traces")
 	tp, err := provider.StdOutTracer()
 	if err != nil {
-		history
 		log.Fatal(err)
+		history1
 	}
 
 	defer func() {
