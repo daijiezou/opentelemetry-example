@@ -17,13 +17,15 @@ package main
 import (
 	"context"
 	"fmt"
-	"go.opentelemetry.io/otel/trace"
-	"google.golang.org/grpc/credentials/insecure"
 	"log"
 	"net"
+	"opentelemetry-example/grpc/api/errors"
 	geminiuserauth "opentelemetry-example/grpc/api/userauth"
 	"opentelemetry-example/provider"
 	"time"
+
+	"go.opentelemetry.io/otel/trace"
+	"google.golang.org/grpc/credentials/insecure"
 
 	"go.opentelemetry.io/contrib/instrumentation/google.golang.org/grpc/otelgrpc"
 	"go.opentelemetry.io/contrib/instrumentation/google.golang.org/grpc/otelgrpc/example/api"
@@ -53,6 +55,16 @@ func (s *server) SayHello(ctx context.Context, in *api.HelloRequest) (*api.Hello
 	time.Sleep(50 * time.Millisecond)
 
 	return &api.HelloResponse{Reply: "Hello " + in.Greeting}, nil
+}
+
+func ReturnError() error {
+	gErr := errors.New(1, "db error", "say hello error")
+	return gErr.WithMetadata(map[string]string{
+		"name":       "daijun",
+		"age":        "18",
+		"sweetheart": "xuxueqin",
+	}).WithCause(fmt.Errorf("cause error"))
+
 }
 
 func (s *server) workHard(ctx context.Context) {

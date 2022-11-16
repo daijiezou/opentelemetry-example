@@ -3,27 +3,20 @@ package main
 import (
 	"context"
 	"fmt"
+	"log"
+	"opentelemetry-example/grpc/api"
+	"opentelemetry-example/grpc/api/errors"
+	"opentelemetry-example/provider"
+	"time"
+
 	"github.com/gin-gonic/gin"
 	"go.opentelemetry.io/contrib/instrumentation/github.com/gin-gonic/gin/otelgin"
 	"go.opentelemetry.io/contrib/instrumentation/google.golang.org/grpc/otelgrpc"
-	"go.opentelemetry.io/otel"
-	"go.opentelemetry.io/otel/attribute"
-	"go.opentelemetry.io/otel/exporters/jaeger"
-	"go.opentelemetry.io/otel/propagation"
-	"go.opentelemetry.io/otel/sdk/resource"
-	sdktrace "go.opentelemetry.io/otel/sdk/trace"
-	semconv "go.opentelemetry.io/otel/semconv/v1.10.0"
 	oteltrace "go.opentelemetry.io/otel/trace"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
 	"google.golang.org/grpc/metadata"
-	"log"
-	"opentelemetry-example/grpc/api"
-	"time"
 )
-
-//var tracer oteltrace.Tracer
-var tracer = otel.Tracer("gin-server-new")
 
 const (
 	service     = "gin-server"
@@ -31,11 +24,16 @@ const (
 )
 
 func main() {
-	tp, err := JaegerProvider("http://127.0.0.1:14268/api/traces")
-	//tp, err := config.Init()
+	/*
+		如果没有初始化Provider，则 otelgin.Middleware 会从全局获取到一个noopTracer
+		noopTracer is an implementation of Tracer that preforms no operations.
+	*/
+	//tp, err := JaegerProvider("http://127.0.0.1:14268/api/traces")
+	tp, err := provider.StdOutTracer()
 	if err != nil {
 		log.Fatal(err)
 	}
+
 	defer func() {
 		if err := tp.Shutdown(context.Background()); err != nil {
 			log.Printf("Error shutting down tracer provider: %v", err)
@@ -81,15 +79,20 @@ func helloHandler(c *gin.Context) {
 		"user-id", "some-test-user-id",
 		"id", id,
 	)
+
 	ctx := metadata.NewOutgoingContext(c.Request.Context(), md)
+	span := oteltrace.SpanFromContext(ctx)
 	response, err := cli.SayHello(ctx, &api.HelloRequest{Greeting: "World"})
 	if err != nil {
+		gerr := errors.FromError(err)
+		fmt.Printf("gerr:%+v", gerr)
 		c.JSON(200, gin.H{
-			"err": err.Error(),
+			"err": gerr.Error(),
 		})
+		return
 	}
 	log.Printf("Response from server: %s", response.Reply)
-	span := oteltrace.SpanFromContext(ctx)
+
 	//traceId := span.SpanContext().TraceID().String()
 	c.Header("trace_id", span.SpanContext().TraceID().String())
 	c.Header("span-id", span.SpanContext().SpanID().String())
@@ -97,25 +100,4 @@ func helloHandler(c *gin.Context) {
 		"reply":   response.Reply,
 		"traceId": span.SpanContext().TraceID().String(),
 	})
-}
-
-func JaegerProvider(url string) (*sdktrace.TracerProvider, error) {
-	fmt.Println("init traceProvider")
-	// 创建jaeger provider
-	// 可以直接连collector也可以连agent
-	exp, err := jaeger.New(jaeger.WithCollectorEndpoint(jaeger.WithEndpoint(url)))
-	if err != nil {
-		return nil, err
-	}
-	tp := sdktrace.NewTracerProvider(
-		sdktrace.WithBatcher(exp),
-		sdktrace.WithResource(resource.NewWithAttributes(
-			semconv.SchemaURL,
-			semconv.ServiceNameKey.String(service),
-			attribute.String("environment", environment),
-		)),
-	)
-	otel.SetTracerProvider(tp)
-	otel.SetTextMapPropagator(propagation.NewCompositeTextMapPropagator(propagation.TraceContext{}, propagation.Baggage{}))
-	return tp, nil
 }
