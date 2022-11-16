@@ -58,6 +58,7 @@ func (s *GeminiAuth) UserLogin(ctx context.Context, in *geminiuserauth.UserLogin
 	zlog.InfoContext(ctx, "UserLogin",
 		zap.String("username", in.Username),
 		zap.String("foo", "bar"))
+
 	//_, span := tracer.Start(ctx, "UserLogin",
 	//	trace.WithAttributes(attribute.String("extra.key", "extra.value")))
 	//defer span.End()

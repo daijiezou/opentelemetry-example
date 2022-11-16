@@ -7,7 +7,7 @@ import (
 	sdktrace "go.opentelemetry.io/otel/sdk/trace"
 )
 
-func initTracer() (*sdktrace.TracerProvider, error) {
+func StdOutTracer() (*sdktrace.TracerProvider, error) {
 	exporter, err := stdout.New(stdout.WithPrettyPrint())
 	if err != nil {
 		return nil, err
