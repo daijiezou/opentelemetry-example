@@ -9,6 +9,10 @@ import (
 	"opentelemetry-example/provider"
 	"time"
 
+	"go.opentelemetry.io/otel"
+
+	"go.opentelemetry.io/otel/attribute"
+
 	"github.com/gin-gonic/gin"
 	"go.opentelemetry.io/contrib/instrumentation/github.com/gin-gonic/gin/otelgin"
 	"go.opentelemetry.io/contrib/instrumentation/google.golang.org/grpc/otelgrpc"
@@ -18,10 +22,7 @@ import (
 	"google.golang.org/grpc/metadata"
 )
 
-const (
-	service     = "gin-server"
-	environment = "production"
-)
+var tracer = otel.Tracer("gin-server")
 
 func main() {
 	/*
@@ -40,7 +41,7 @@ func main() {
 		}
 	}()
 	r := gin.New()
-	r.Use(otelgin.Middleware("my-server"))
+	r.Use(otelgin.Middleware("my-server"), TokenAuth())
 	r.GET("/users/:id", helloHandler)
 
 	if err := r.Run("localhost:9999"); err != nil {
@@ -50,17 +51,16 @@ func main() {
 
 func helloHandler(c *gin.Context) {
 	id := c.Param("id")
-	/*	_, span := tracer.Start(c.Request.Context(), "helloHandler", oteltrace.WithAttributes(attribute.String("id", id)))
-		defer span.End()
-		span.SetAttributes(attribute.KeyValue{
-			Key:   "name",
-			Value: attribute.StringValue("daijun"),
-		})
-		span.SetAttributes(attribute.KeyValue{
-			Key:   "current time",
-			Value: attribute.StringValue(time.Now().Format("2006-01-02 15:04:05")),
-		})*/
-
+	_, span := tracer.Start(c.Request.Context(), "helloHandler", oteltrace.WithAttributes(attribute.String("id", id)))
+	defer span.End()
+	span.SetAttributes(attribute.KeyValue{
+		Key:   "name",
+		Value: attribute.StringValue("daijun"),
+	})
+	span.SetAttributes(attribute.KeyValue{
+		Key:   "current time",
+		Value: attribute.StringValue(time.Now().Format("2006-01-02 15:04:05")),
+	})
 	var conn *grpc.ClientConn
 	conn, err := grpc.Dial(":7777", grpc.WithTransportCredentials(insecure.NewCredentials()),
 		grpc.WithUnaryInterceptor(otelgrpc.UnaryClientInterceptor()),
@@ -79,9 +79,7 @@ func helloHandler(c *gin.Context) {
 		"user-id", "some-test-user-id",
 		"id", id,
 	)
-
 	ctx := metadata.NewOutgoingContext(c.Request.Context(), md)
-	span := oteltrace.SpanFromContext(ctx)
 	response, err := cli.SayHello(ctx, &api.HelloRequest{Greeting: "World"})
 	if err != nil {
 		gerr := errors.FromError(err)
@@ -92,12 +90,16 @@ func helloHandler(c *gin.Context) {
 		return
 	}
 	log.Printf("Response from server: %s", response.Reply)
-
-	//traceId := span.SpanContext().TraceID().String()
-	c.Header("trace_id", span.SpanContext().TraceID().String())
-	c.Header("span-id", span.SpanContext().SpanID().String())
 	c.JSON(200, gin.H{
 		"reply":   response.Reply,
 		"traceId": span.SpanContext().TraceID().String(),
 	})
+}
+
+func TokenAuth() gin.HandlerFunc {
+	return func(c *gin.Context) {
+		// 模拟token校验
+		span := oteltrace.SpanFromContext(c.Request.Context())
+		c.Header("Trace-ID", span.SpanContext().TraceID().String())
+	}
 }
